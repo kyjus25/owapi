@@ -71,6 +71,7 @@ app.get('/api/current', (req, res) => {
       const filter4 = filter1.match(/<h1\s\S*?>([\s\S]*?)<\/h1>/g).toString();
       const filter5 = filter4.match(/<span\s\S*?>([\s\S]*?)<\/span>/g);
 
+      // Going after current temp first
 
       const responseObj = {
         location: {
