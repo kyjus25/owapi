@@ -1,43 +1,49 @@
 const express = require('express');
 const request = require('request');
+const html2json = require('html2json').html2json;
 const app = express();
 const port = 3000;
 
 const template = {
   "location": {
-    "elevation": "",
-    "north": 39,
-    "west": 88.8,
+    "elevation": null,
+    "north": null,
+    "west": null,
   },
-  "city": "",
-  "state": "",
-  "updated": "",
-  "station": {
-    "name": "East Charleston Station",
-    "callsign": "KCMI Station History"
+  "city": null,
+  "state": null,
+  "updated": null,
+  // "station": {
+  //   "name": "East Charleston Station",
+  //   "callsign": "KCMI Station History"
+  // },
+  // "conditions": {
+  //   "pressure": "30.08",
+  //   "visibility": "10",
+  //   "clouds": "Cloudy",
+  //   "dewpoint": "69",
+  //   "humidity": "57%",
+  //   "rainfall": "0",
+  //   "snowdepth": "0",
+  // },
+  "weather": {
+    "icon": null,
+    "readable": null
   },
-  "conditions": {
-    "pressure": "30.08",
-    "visibility": "10",
-    "clouds": "Cloudy",
-    "dewpoint": "69",
-    "humidity": "57%",
-    "rainfall": "0",
-    "snowdepth": "0",
-  },
-  "weather": "Mostly Cloudy",
   "wind": {
-    "type": "Gusts",
-    "speed": "7"
+    "speed": null,
+    "direction": null,
+    "heading": null,
+    "gusts": null
   },
   "high": null,
-  "low": 69,
-  "temperature": 91,
-  "like": 99,
-  "tonight": {
-
-  },
-  "forecast": "Tomorrows temp is to be warmer than today"
+  "low": null,
+  "temperature": null,
+  "like": null,
+  // "tonight": {
+  //
+  // },
+  "forecast": null
 };
 
 
@@ -53,40 +59,40 @@ app.get('/api/current', (req, res) => {
       }
     };
     request(options, function (error, response, body) {
-      // console.error('error:', error); // Print the error if one occurred
-      // console.log('statusCode:', response && response.statusCode); // Print the response status code if a response was received
-      // console.log('body:', body); // Print the HTML for the Google homepage.
-      // const filter1 = body.match(/<lib-city-header([\s\S]*?)(.*)lib-city-header>/g);
 
-      // Main Body Object
       const htmlBody = body.match(/<mat-sidenav-content([\s\S]*?)(.*)<\/mat-sidenav-content>/g).toString();
+      const jsonBody = html2json(htmlBody);
+      const location = jsonBody.child[2].child[1].child[0].child[1].child[4];
+      const cityState = jsonBody.child[2].child[1].child[0].child[5].child[0].child[0].child[0].child[0].child[0];
 
-      const filter1 = htmlBody.match(/<lib-city-header([\s\S]*?)(.*)<\/lib-city-header>/g).toString();
+      template.location.elevation = location.child[0].child[1].child[0].child[1].child[1].child[0].text;
+      template.location.north = location.child[0].child[1].child[0].child[2].child[0].text;
+      template.location.west = location.child[0].child[1].child[0].child[4].child[0].text;
 
-      // Location Object
-      const filter2 = filter1.match(/Elev([\s\S]*?)(.*)°W/g).toString();
-      const filter3 = filter2.match(/<strong\s\S*?>([\s\S]*?)<\/strong>/g);
+      template.city = req['query']['city'];
+      template.state = req['query']['state'];
+      template.updated = cityState.child[1].child[0].child[0].child[3].child[0].text;
 
-      // City & State
-      const filter4 = filter1.match(/<h1\s\S*?>([\s\S]*?)<\/h1>/g).toString();
-      const filter5 = filter4.match(/<span\s\S*?>([\s\S]*?)<\/span>/g);
+      template.temperature = cityState.child[1].child[1].child[0].child[0].child[1].child[0].child[1].child[3].child[0].text;
 
-      // Going after current temp first
+      template.weather.icon = cityState.child[1].child[2].child[0].child[0].child[0].attr.src;
+      template.weather.readable = cityState.child[1].child[2].child[0].child[0].child[1].child[0].text;
 
-      const responseObj = {
-        location: {
-          elevation: filter3[0].match(/<strong\s\S*?>([\s\S]*?)<\/strong>/)[1].trim(),
-          north: filter3[1].match(/<strong\s\S*?>([\s\S]*?)<\/strong>/)[1].trim(),
-          west: filter3[2].match(/<strong\s\S*?>([\s\S]*?)<\/strong>/)[1].trim()
-        },
-        city: filter5[0].match(/<span\s\S*?>([\s\S]*?)<\/span>/)[1].split(',')[0].trim(),
-        state: filter5[0].match(/<span\s\S*?>([\s\S]*?)<\/span>/)[1].split(',')[1].trim(),
+      template.high = cityState.child[1].child[1].child[0].child[0].child[0].child[0].child[0].text;
+      template.low = cityState.child[1].child[1].child[0].child[0].child[0].child[2].child[0].text;
+      template.like = cityState.child[1].child[1].child[0].child[0].child[2].child[1].child[0].text;
+      template.forecast = cityState.child[1].child[4].child[0].child[0].child[1].child[0].text;
 
-      };
-      res.send(responseObj);
+      template.wind.direction = cityState.child[1].child[2].child[0].child[1].child[1].child[0].child[1].child[0].text;
+      template.wind.speed = cityState.child[1].child[2].child[0].child[1].child[1].child[0].child[2].child[0].child[0].text;
+      template.wind.gusts = cityState.child[1].child[2].child[0].child[1].child[4].child[1].child[0].child[1].child[3].child[0].text;
+      template.wind.heading = cityState.child[1].child[2].child[0].child[1].child[1].child[0].child[0].attr.style;
+
+      // console.log(template.location);
+      res.send(template);
     });
   } else {
-    res.send({error: "CITY and STATE are required params."});
+    res.send({error: "Lowercase CITY (full name) and STATE (abbreviation) are required params."});
   }
 });
 
